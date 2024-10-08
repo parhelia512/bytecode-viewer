@@ -50,369 +50,384 @@ import java.util.Map;
  */
 public class MyErrorStripe extends JPanel
 {
-	private final RSyntaxTextArea textArea;
-	private final transient Listener listener;
+    private final RSyntaxTextArea textArea;
+    private final transient Listener listener;
 
-	public MyErrorStripe(RSyntaxTextArea textArea)
-	{
-		this.textArea = textArea;
-		setLayout(null);
-		listener = new Listener();
-		addMouseListener(listener);
-	}
+    public MyErrorStripe(RSyntaxTextArea textArea)
+    {
+        this.textArea = textArea;
+        setLayout(null);
+        listener = new Listener();
+        addMouseListener(listener);
+    }
 
-	private int lineToY(int line, Rectangle r)
-	{
-		if (r == null)
-			r = new Rectangle();
+    private int lineToY(int line, Rectangle r)
+    {
+        if (r == null)
+            r = new Rectangle();
 
-		textArea.computeVisibleRect(r);
-		int h = r.height;
-		float lineCount = textArea.getLineCount();
-		int lineHeight = textArea.getLineHeight();
-		int linesPerVisibleRect = h / lineHeight;
-		return Math.round((h - 1) * line / Math.max(lineCount, linesPerVisibleRect));
-	}
+        textArea.computeVisibleRect(r);
+        int h = r.height;
+        float lineCount = textArea.getLineCount();
+        int lineHeight = textArea.getLineHeight();
+        int linesPerVisibleRect = h / lineHeight;
 
-	private int yToLine(int y)
-	{
-		int line = -1;
-		int h = textArea.getVisibleRect().height;
-		int lineHeight = textArea.getLineHeight();
-		int linesPerVisibleRect = h / lineHeight;
-		int lineCount = textArea.getLineCount();
-		if (y < h)
-		{
-			float at = y / (float) h;
-			line = Math.round((Math.max(lineCount, linesPerVisibleRect) - 1) * at);
-		}
+        return Math.round((h - 1) * line / Math.max(lineCount, linesPerVisibleRect));
+    }
 
-		return line;
-	}
+    private int yToLine(int y)
+    {
+        int line = -1;
+        int h = textArea.getVisibleRect().height;
+        int lineHeight = textArea.getLineHeight();
+        int linesPerVisibleRect = h / lineHeight;
+        int lineCount = textArea.getLineCount();
 
-	private void paintParserNoticeMarker(Graphics2D g, ParserNotice notice, int width, int height)
-	{
-		Color borderColor = notice.getColor();
-		if (borderColor == null)
-			borderColor = Color.BLACK;
+        if (y < h)
+        {
+            float at = y / (float) h;
+            line = Math.round((Math.max(lineCount, linesPerVisibleRect) - 1) * at);
+        }
 
-		Color fillColor = borderColor.brighter();
-		g.setColor(fillColor);
-		g.fillRect(0, 0, width, height);
+        return line;
+    }
 
-		g.setColor(borderColor);
-		g.drawRect(0, 0, width - 1, height - 1);
-	}
+    private void paintParserNoticeMarker(Graphics2D g, ParserNotice notice, int width, int height)
+    {
+        Color borderColor = notice.getColor();
+        if (borderColor == null)
+            borderColor = Color.BLACK;
 
-	public void refreshMarkers()
-	{
-		removeAll();
-		Map<Integer, Marker> markerMap = new HashMap<>();
-		List<DocumentRange> occurrences = textArea.getMarkedOccurrences();
-		addMarkersForRanges(occurrences, markerMap, textArea.getMarkOccurrencesColor());
-		revalidate();
-		repaint();
-	}
+        Color fillColor = borderColor.brighter();
+        g.setColor(fillColor);
+        g.fillRect(0, 0, width, height);
 
-	private void addMarkersForRanges(List<DocumentRange> occurrences, Map<Integer, Marker> markerMap, Color color)
-	{
-		for (DocumentRange range : occurrences)
-		{
-			int line;
-			try
-			{
-				line = textArea.getLineOfOffset(range.getStartOffset());
-			} catch (BadLocationException e)
-			{
-				continue;
-			}
+        g.setColor(borderColor);
+        g.drawRect(0, 0, width - 1, height - 1);
+    }
 
-			ParserNotice notice = new MarkedOccurrenceNotice(range, color);
-			Integer key = line;
-			Marker m = markerMap.get(key);
-			if (m == null)
-			{
-				m = new Marker(notice);
-				m.addMouseListener(listener);
-				markerMap.put(key, m);
-				add(m);
-			} else
-			{
-				if (!m.containsMarkedOccurrence())
-					m.addNotice(notice);
-			}
-		}
-	}
+    public void refreshMarkers()
+    {
+        removeAll();
+        Map<Integer, Marker> markerMap = new HashMap<>();
+        List<DocumentRange> occurrences = textArea.getMarkedOccurrences();
+        addMarkersForRanges(occurrences, markerMap, textArea.getMarkOccurrencesColor());
+        revalidate();
+        repaint();
+    }
 
-	@Override
-	public void updateUI()
-	{
-		super.updateUI();
-	}
+    private void addMarkersForRanges(List<DocumentRange> occurrences, Map<Integer, Marker> markerMap, Color color)
+    {
+        for (DocumentRange range : occurrences)
+        {
+            int line;
 
-	@Override
-	protected void paintComponent(Graphics g)
-	{
-		super.paintComponent(g);
-	}
+            try
+            {
+                line = textArea.getLineOfOffset(range.getStartOffset());
+            }
+            catch (BadLocationException e)
+            {
+                continue;
+            }
 
-	@Override
-	protected void paintChildren(Graphics g)
-	{
-		super.paintChildren(g);
-	}
+            ParserNotice notice = new MarkedOccurrenceNotice(range, color);
+            Integer key = line;
+            Marker m = markerMap.get(key);
 
-	@Override
-	public Dimension getPreferredSize()
-	{
-		return new Dimension(14, textArea.getPreferredScrollableViewportSize().height);
-	}
+            if (m == null)
+            {
+                m = new Marker(notice);
+                m.addMouseListener(listener);
+                markerMap.put(key, m);
+                add(m);
+            }
+            else
+            {
+                if (!m.containsMarkedOccurrence())
+                    m.addNotice(notice);
+            }
+        }
+    }
 
-	@Override
-	public void doLayout()
-	{
-		for (int i = 0; i < getComponentCount(); i++)
-		{
-			Marker m = (Marker) getComponent(i);
-			m.updateLocation();
-		}
-	}
+    @Override
+    public void updateUI()
+    {
+        super.updateUI();
+    }
 
-	@Override
-	public void addNotify()
-	{
-		super.addNotify();
-		refreshMarkers();
-	}
+    @Override
+    protected void paintComponent(Graphics g)
+    {
+        super.paintComponent(g);
+    }
 
-	@Override
-	public void removeNotify()
-	{
-		super.removeNotify();
-	}
+    @Override
+    protected void paintChildren(Graphics g)
+    {
+        super.paintChildren(g);
+    }
 
-	private class Listener extends MouseAdapter
-	{
-		private final Rectangle r = new Rectangle();
+    @Override
+    public Dimension getPreferredSize()
+    {
+        return new Dimension(14, textArea.getPreferredScrollableViewportSize().height);
+    }
 
-		@Override
-		public void mouseClicked(@NotNull MouseEvent e)
-		{
-			Component source = (Component) e.getSource();
-			if (source instanceof MyErrorStripe.Marker)
-			{
-				Marker m = (Marker) source;
-				m.mouseClicked(e);
-				return;
-			}
+    @Override
+    public void doLayout()
+    {
+        for (int i = 0; i < getComponentCount(); i++)
+        {
+            Marker m = (Marker) getComponent(i);
+            m.updateLocation();
+        }
+    }
 
-			int line = yToLine(e.getY());
-			if (line > -1)
-			{
-				try
-				{
-					int offset = textArea.getLineOfOffset(line);
-					textArea.setCaretPosition(offset);
-					RSyntaxUtilities.selectAndPossiblyCenter(textArea, new DocumentRange(offset, offset), false);
-				} catch (BadLocationException exception)
-				{
-					UIManager.getLookAndFeel().provideErrorFeedback(textArea);
-				}
-			}
-		}
-	}
+    @Override
+    public void addNotify()
+    {
+        super.addNotify();
+        refreshMarkers();
+    }
 
-	private class MarkedOccurrenceNotice implements ParserNotice
-	{
-		private final DocumentRange range;
-		private final Color color;
+    @Override
+    public void removeNotify()
+    {
+        super.removeNotify();
+    }
 
-		MarkedOccurrenceNotice(DocumentRange range, Color color)
-		{
-			this.range = range;
-			this.color = color;
-		}
+    private class Listener extends MouseAdapter
+    {
+        private final Rectangle r = new Rectangle();
 
-		@Override
-		public boolean containsPosition(int pos)
-		{
-			return pos >= range.getStartOffset() && pos < range.getEndOffset();
-		}
+        @Override
+        public void mouseClicked(@NotNull MouseEvent e)
+        {
+            Component source = (Component) e.getSource();
 
-		@Override
-		public Color getColor()
-		{
-			return color;
-		}
+            if (source instanceof MyErrorStripe.Marker)
+            {
+                Marker m = (Marker) source;
+                m.mouseClicked(e);
+                return;
+            }
 
-		@Override
-		public int getLength()
-		{
-			return range.getEndOffset() - range.getStartOffset();
-		}
+            int line = yToLine(e.getY());
 
-		@Override
-		public Level getLevel()
-		{
-			return Level.INFO;
-		}
+            if (line > -1)
+            {
+                try
+                {
+                    int offset = textArea.getLineOfOffset(line);
+                    textArea.setCaretPosition(offset);
+                    RSyntaxUtilities.selectAndPossiblyCenter(textArea, new DocumentRange(offset, offset), false);
+                }
+                catch (BadLocationException exception)
+                {
+                    UIManager.getLookAndFeel().provideErrorFeedback(textArea);
+                }
+            }
+        }
+    }
 
-		@Override
-		public int getLine()
-		{
-			try
-			{
-				return textArea.getLineOfOffset(range.getStartOffset()) + 1;
-			} catch (BadLocationException e)
-			{
-				return 0;
-			}
-		}
+    private class MarkedOccurrenceNotice implements ParserNotice
+    {
+        private final DocumentRange range;
+        private final Color color;
 
-		@Override
-		public boolean getKnowsOffsetAndLength()
-		{
-			return true;
-		}
+        MarkedOccurrenceNotice(DocumentRange range, Color color)
+        {
+            this.range = range;
+            this.color = color;
+        }
 
-		@Contract(pure = true)
-		@Override
-		public @NotNull String getMessage()
-		{
-			return "";
-		}
+        @Override
+        public boolean containsPosition(int pos)
+        {
+            return pos >= range.getStartOffset() && pos < range.getEndOffset();
+        }
 
-		@Override
-		public int getOffset()
-		{
-			return range.getStartOffset();
-		}
+        @Override
+        public Color getColor()
+        {
+            return color;
+        }
 
-		@Override
-		public Parser getParser()
-		{
-			return null;
-		}
+        @Override
+        public int getLength()
+        {
+            return range.getEndOffset() - range.getStartOffset();
+        }
 
-		@Override
-		public boolean getShowInEditor()
-		{
-			return false;
-		}
+        @Override
+        public Level getLevel()
+        {
+            return Level.INFO;
+        }
 
-		@Override
-		public String getToolTipText()
-		{
-			return null;
-		}
+        @Override
+        public int getLine()
+        {
+            try
+            {
+                return textArea.getLineOfOffset(range.getStartOffset()) + 1;
+            }
+            catch (BadLocationException e)
+            {
+                return 0;
+            }
+        }
 
-		@Override
-		public int compareTo(@NotNull ParserNotice o)
-		{
-			return 0;
-		}
+        @Override
+        public boolean getKnowsOffsetAndLength()
+        {
+            return true;
+        }
 
-		@Override
-		public int hashCode()
-		{
-			return 0;
-		}
-	}
+        @Contract(pure = true)
+        @Override
+        public @NotNull String getMessage()
+        {
+            return "";
+        }
 
-	private static final int MARKER_HEIGHT = 3;
+        @Override
+        public int getOffset()
+        {
+            return range.getStartOffset();
+        }
 
-	private class Marker extends JComponent
-	{
-		private final java.util.List<ParserNotice> notices;
+        @Override
+        public Parser getParser()
+        {
+            return null;
+        }
 
-		Marker(ParserNotice notice)
-		{
-			notices = new ArrayList<>();
-			addNotice(notice);
-			setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-			setSize(getPreferredSize());
-		}
+        @Override
+        public boolean getShowInEditor()
+        {
+            return false;
+        }
 
-		private void addNotice(ParserNotice notice)
-		{
-			notices.add(notice);
-		}
+        @Override
+        public String getToolTipText()
+        {
+            return null;
+        }
 
-		@Contract(value = " -> new", pure = true)
-		@Override
-		public @NotNull Dimension getPreferredSize()
-		{
-			return new Dimension(12, MARKER_HEIGHT);
-		}
+        @Override
+        public int compareTo(@NotNull ParserNotice o)
+        {
+            return 0;
+        }
 
-		@Override
-		protected void paintComponent(Graphics g)
-		{
-			final ParserNotice notice = getHighestPriorityNotice();
-			if (notice != null)
-				paintParserNoticeMarker((Graphics2D) g, notice, getWidth(), getHeight());
-		}
+        @Override
+        public int hashCode()
+        {
+            return 0;
+        }
+    }
 
-		protected void mouseClicked(MouseEvent e)
-		{
-			ParserNotice pn = notices.get(0);
-			int offs = pn.getOffset();
-			int len = pn.getLength();
-			if (offs > -1 && len > -1) // These values are optional
-			{
-				DocumentRange range = new DocumentRange(offs, offs + len);
-				RSyntaxUtilities.selectAndPossiblyCenter(textArea, range, true);
-			} else
-			{
-				int line = pn.getLine();
-				try
-				{
-					offs = textArea.getLineStartOffset(line);
-					textArea.getFoldManager().ensureOffsetNotInClosedFold(offs);
-					textArea.setCaretPosition(offs);
-				} catch (BadLocationException ble) // Never happens
-				{
-					UIManager.getLookAndFeel().provideErrorFeedback(textArea);
-				}
-			}
-		}
+    private static final int MARKER_HEIGHT = 3;
 
-		public boolean containsMarkedOccurrence()
-		{
-			boolean result = false;
-			for (ParserNotice notice : notices)
-			{
-				if (notice instanceof MarkedOccurrenceNotice)
-				{
-					result = true;
-					break;
-				}
-			}
+    private class Marker extends JComponent
+    {
+        private final java.util.List<ParserNotice> notices;
 
-			return result;
-		}
+        Marker(ParserNotice notice)
+        {
+            notices = new ArrayList<>();
+            addNotice(notice);
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setSize(getPreferredSize());
+        }
 
-		public ParserNotice getHighestPriorityNotice()
-		{
-			ParserNotice selectedNotice = null;
-			int lowestLevel = Integer.MAX_VALUE;
-			for (ParserNotice notice : notices)
-			{
-				if (notice.getLevel().getNumericValue() < lowestLevel)
-				{
-					lowestLevel = notice.getLevel().getNumericValue();
-					selectedNotice = notice;
-				}
-			}
+        private void addNotice(ParserNotice notice)
+        {
+            notices.add(notice);
+        }
 
-			return selectedNotice;
-		}
+        @Contract(value = " -> new", pure = true)
+        @Override
+        public @NotNull Dimension getPreferredSize()
+        {
+            return new Dimension(12, MARKER_HEIGHT);
+        }
 
-		public void updateLocation()
-		{
-			int line = notices.get(0).getLine();
-			int y = lineToY(line - 1, null);
-			setLocation(2, y);
-		}
-	}
+        @Override
+        protected void paintComponent(Graphics g)
+        {
+            final ParserNotice notice = getHighestPriorityNotice();
+
+            if (notice != null)
+                paintParserNoticeMarker((Graphics2D) g, notice, getWidth(), getHeight());
+        }
+
+        protected void mouseClicked(MouseEvent e)
+        {
+            ParserNotice pn = notices.get(0);
+            int offs = pn.getOffset();
+            int len = pn.getLength();
+
+            if (offs > -1 && len > -1) // These values are optional
+            {
+                DocumentRange range = new DocumentRange(offs, offs + len);
+                RSyntaxUtilities.selectAndPossiblyCenter(textArea, range, true);
+            }
+            else
+            {
+                int line = pn.getLine();
+
+                try
+                {
+                    offs = textArea.getLineStartOffset(line);
+                    textArea.getFoldManager().ensureOffsetNotInClosedFold(offs);
+                    textArea.setCaretPosition(offs);
+                }
+                catch (BadLocationException ble) // Never happens
+                {
+                    UIManager.getLookAndFeel().provideErrorFeedback(textArea);
+                }
+            }
+        }
+
+        public boolean containsMarkedOccurrence()
+        {
+            boolean result = false;
+            for (ParserNotice notice : notices)
+            {
+                if (notice instanceof MarkedOccurrenceNotice)
+                {
+                    result = true;
+                    break;
+                }
+            }
+
+            return result;
+        }
+
+        public ParserNotice getHighestPriorityNotice()
+        {
+            ParserNotice selectedNotice = null;
+            int lowestLevel = Integer.MAX_VALUE;
+            for (ParserNotice notice : notices)
+            {
+                if (notice.getLevel().getNumericValue() < lowestLevel)
+                {
+                    lowestLevel = notice.getLevel().getNumericValue();
+                    selectedNotice = notice;
+                }
+            }
+
+            return selectedNotice;
+        }
+
+        public void updateLocation()
+        {
+            int line = notices.get(0).getLine();
+            int y = lineToY(line - 1, null);
+            setLocation(2, y);
+        }
+    }
 }

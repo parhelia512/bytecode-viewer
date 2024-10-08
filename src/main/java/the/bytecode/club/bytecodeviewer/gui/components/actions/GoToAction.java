@@ -42,10 +42,14 @@ public class GoToAction extends AbstractAction
         int line = textArea.getCaretLineNumber() + 1;
         int column = textArea.getCaretOffsetFromLineStart();
 
-        container.fieldMembers.values().forEach(fields -> fields.forEach(field -> {
-            if (field.line == line && field.columnStart - 1 <= column && field.columnEnd >= column)
+        container.fieldMembers.values().forEach(fields -> fields.forEach(field ->
+        {
+            if (field.line == line
+                && field.columnStart - 1 <= column
+                && field.columnEnd >= column)
             {
                 Element root = textArea.getDocument().getDefaultRootElement();
+
                 // Open the class that is associated with the field's owner.
                 if (!field.owner.equals(container.getName()))
                 {
@@ -59,7 +63,8 @@ public class GoToAction extends AbstractAction
             }
         }));
 
-        container.methodParameterMembers.values().forEach(parameters -> parameters.forEach(parameter -> {
+        container.methodParameterMembers.values().forEach(parameters -> parameters.forEach(parameter ->
+        {
             if (parameter.line == line && parameter.columnStart - 1 <= column && parameter.columnEnd >= column)
             {
                 Element root = textArea.getDocument().getDefaultRootElement();
@@ -67,10 +72,12 @@ public class GoToAction extends AbstractAction
                 {
                     int startOffset = root.getElement(parameter.line - 1).getStartOffset() + (parameter.columnStart - 1);
                     textArea.setCaretPosition(startOffset);
-                } else
+                }
+                else
                 {
                     String method = parameter.method;
-                    parameters.stream().filter(classParameterLocation -> classParameterLocation.method.equals(method)).forEach(classParameterLocation -> {
+                    parameters.stream().filter(classParameterLocation -> classParameterLocation.method.equals(method)).forEach(classParameterLocation ->
+                    {
                         if (classParameterLocation.decRef.equalsIgnoreCase("declaration"))
                         {
                             int startOffset = root.getElement(classParameterLocation.line - 1).getStartOffset() + (classParameterLocation.columnStart - 1);
@@ -81,18 +88,22 @@ public class GoToAction extends AbstractAction
             }
         }));
 
-        container.methodLocalMembers.values().forEach(localMembers -> localMembers.forEach(localMember -> {
+        container.methodLocalMembers.values().forEach(localMembers -> localMembers.forEach(localMember ->
+        {
             if (localMember.line == line && localMember.columnStart - 1 <= column && localMember.columnEnd >= column)
             {
                 Element root = textArea.getDocument().getDefaultRootElement();
+
                 if (localMember.decRef.equals("declaration"))
                 {
                     int startOffset = root.getElement(localMember.line - 1).getStartOffset() + (localMember.columnStart - 1);
                     textArea.setCaretPosition(startOffset);
-                } else
+                }
+                else
                 {
                     String method = localMember.method;
-                    localMembers.stream().filter(classLocalVariableLocation -> classLocalVariableLocation.method.equals(method)).forEach(classLocalVariableLocation -> {
+                    localMembers.stream().filter(classLocalVariableLocation -> classLocalVariableLocation.method.equals(method)).forEach(classLocalVariableLocation ->
+                    {
                         if (classLocalVariableLocation.decRef.equalsIgnoreCase("declaration"))
                         {
                             int startOffset = root.getElement(classLocalVariableLocation.line - 1).getStartOffset() + (classLocalVariableLocation.columnStart - 1);
@@ -103,17 +114,21 @@ public class GoToAction extends AbstractAction
             }
         }));
 
-        container.methodMembers.values().forEach(methods -> methods.forEach(method -> {
+        container.methodMembers.values().forEach(methods -> methods.forEach(method ->
+        {
             if (method.line == line && method.columnStart - 1 <= column && method.columnEnd >= column)
             {
                 Element root = textArea.getDocument().getDefaultRootElement();
+
                 if (method.decRef.equalsIgnoreCase("declaration"))
                 {
                     int startOffset = root.getElement(method.line - 1).getStartOffset() + (method.columnStart - 1);
                     textArea.setCaretPosition(startOffset);
-                } else
+                }
+                else
                 {
-                    methods.stream().filter(classMethodLocation -> classMethodLocation.owner.equals(method.owner)).forEach(classMethodLocation -> {
+                    methods.stream().filter(classMethodLocation -> classMethodLocation.signature.equals(method.signature)).forEach(classMethodLocation ->
+                    {
                         if (classMethodLocation.decRef.equalsIgnoreCase("declaration"))
                         {
                             int startOffset = root.getElement(classMethodLocation.line - 1).getStartOffset() + (classMethodLocation.columnStart - 1);
@@ -121,25 +136,28 @@ public class GoToAction extends AbstractAction
                         }
                     });
 
-
                     open(textArea, false, false, true);
                 }
             }
         }));
 
-        container.classReferences.values().forEach(classes -> classes.forEach(clazz -> {
+        container.classReferences.values().forEach(classes -> classes.forEach(clazz ->
+        {
             String name;
             if (clazz.line == line && clazz.columnStart - 1 <= column && clazz.columnEnd - 1 >= column)
             {
                 name = clazz.owner;
                 Element root = textArea.getDocument().getDefaultRootElement();
+
                 if (clazz.type.equals("declaration"))
                 {
                     int startOffset = root.getElement(clazz.line - 1).getStartOffset() + (clazz.columnStart - 1);
                     textArea.setCaretPosition(startOffset);
-                } else
+                }
+                else
                 {
-                    classes.stream().filter(classReferenceLocation -> classReferenceLocation.owner.equals(name)).forEach(classReferenceLocation -> {
+                    classes.stream().filter(classReferenceLocation -> classReferenceLocation.owner.equals(name)).forEach(classReferenceLocation ->
+                    {
                         if (classReferenceLocation.type.equals("declaration"))
                         {
                             int startOffset = root.getElement(classReferenceLocation.line - 1).getStartOffset() + (classReferenceLocation.columnStart - 1);
@@ -160,6 +178,7 @@ public class GoToAction extends AbstractAction
             return null;
 
         ResourceContainer resourceContainer = BytecodeViewer.getFileContainer(container.getParentContainer());
+
         if (resourceContainer == null)
             return null;
 
@@ -170,14 +189,17 @@ public class GoToAction extends AbstractAction
             ClassViewer activeResource = (ClassViewer) BytecodeViewer.viewer.workPane.getActiveResource();
             HashMap<String, ClassFileContainer> classFiles = BytecodeViewer.viewer.workPane.classFiles;
             return wait(classFiles, activeResource);
-        } else if (method)
+        }
+        else if (method)
         {
             ClassMethodLocation classMethodLocation = container.getMethodLocationsFor(lexeme).get(0);
             ClassReferenceLocation classReferenceLocation = null;
+
             try
             {
                 classReferenceLocation = container.getClassReferenceLocationsFor(classMethodLocation.owner).get(0);
-            } catch (Exception ignored)
+            }
+            catch (Exception ignored)
             {
             }
 
@@ -185,10 +207,14 @@ public class GoToAction extends AbstractAction
                 return null;
 
             String packagePath = classReferenceLocation.packagePath;
+
             if (packagePath.startsWith("java") || packagePath.startsWith("javax") || packagePath.startsWith("com.sun"))
                 return null;
 
-            String resourceName = packagePath + "/" + classMethodLocation.owner;
+            String resourceName = classMethodLocation.owner;
+            if (!packagePath.isEmpty())
+                resourceName = packagePath + "/" + classMethodLocation.owner;
+
             if (resourceContainer.resourceClasses.containsKey(resourceName))
             {
                 BytecodeViewer.viewer.workPane.addClassResource(resourceContainer, resourceName + ".class");
@@ -196,14 +222,21 @@ public class GoToAction extends AbstractAction
                 HashMap<String, ClassFileContainer> classFiles = BytecodeViewer.viewer.workPane.classFiles;
                 return wait(classFiles, activeResource);
             }
-        } else
+        }
+        else
         {
             ClassReferenceLocation classReferenceLocation = container.getClassReferenceLocationsFor(lexeme).get(0);
             String packagePath = classReferenceLocation.packagePath;
+
             if (packagePath.startsWith("java") || packagePath.startsWith("javax") || packagePath.startsWith("com.sun"))
                 return null;
 
-            String resourceName = packagePath + "/" + lexeme;
+            String resourceName = lexeme;
+            if (!packagePath.isEmpty())
+            {
+                resourceName = packagePath + "/" + lexeme;
+            }
+
             if (resourceContainer.resourceClasses.containsKey(resourceName))
             {
                 BytecodeViewer.viewer.workPane.addClassResource(resourceContainer, resourceName + ".class");
@@ -218,64 +251,71 @@ public class GoToAction extends AbstractAction
 
     private void open(RSyntaxTextArea textArea, boolean isClass, boolean isField, boolean isMethod)
     {
-        Thread thread = new Thread(() -> {
+        Thread thread = new Thread(() ->
+        {
             Token token = textArea.modelToToken(textArea.getCaretPosition());
             token = TokenUtil.getToken(textArea, token);
             String lexeme = token.getLexeme();
             ClassFileContainer classFileContainer;
+
             if (isClass)
             {
                 classFileContainer = openClass(lexeme, false, false);
+
                 if (classFileContainer == null)
                     return;
 
-                classFileContainer.classReferences.forEach((className, classReference) -> {
+                classFileContainer.classReferences.forEach((className, classReference) ->
+                {
                     if (className.equals(lexeme))
                     {
-                        classReference.forEach(classReferenceLocation -> {
+                        classReference.forEach(classReferenceLocation ->
+                        {
                             if (classReferenceLocation.type.equals("declaration"))
-                            {
                                 moveCursor(classReferenceLocation.line, classReferenceLocation.columnStart);
-                            }
                         });
                     }
                 });
-            } else if (isField)
+            }
+            else if (isField)
             {
                 classFileContainer = openClass(lexeme, true, false);
                 if (classFileContainer == null)
                     return;
 
-                classFileContainer.fieldMembers.forEach((fieldName, fields) -> {
+                classFileContainer.fieldMembers.forEach((fieldName, fields) ->
+                {
                     if (fieldName.equals(lexeme))
                     {
-                        fields.forEach(classFieldLocation -> {
+                        fields.forEach(classFieldLocation ->
+                        {
                             if (classFieldLocation.type.equals("declaration"))
-                            {
                                 moveCursor(classFieldLocation.line, classFieldLocation.columnStart);
-                            }
                         });
                     }
                 });
-            } else if (isMethod)
+            }
+            else if (isMethod)
             {
                 classFileContainer = openClass(lexeme, false, true);
+
                 if (classFileContainer == null)
                     return;
 
-                classFileContainer.methodMembers.forEach((methodName, methods) -> {
+                classFileContainer.methodMembers.forEach((methodName, methods) ->
+                {
                     if (methodName.equals(lexeme))
                     {
-                        methods.forEach(method -> {
+                        methods.forEach(method ->
+                        {
                             if (method.decRef.equalsIgnoreCase("declaration"))
-                            {
                                 moveCursor(method.line, method.columnStart);
-                            }
                         });
                     }
                 });
             }
         }, "Open Class");
+
         thread.start();
     }
 
@@ -285,22 +325,26 @@ public class GoToAction extends AbstractAction
         try
         {
             BytecodeViewer.updateBusyStatus(true);
-            Thread.getAllStackTraces().forEach((name, stackTrace) -> {
+            Thread.getAllStackTraces().forEach((name, stackTrace) ->
+            {
                 if (name.getName().equals("Pane Update"))
                 {
                     try
                     {
                         name.join();
-                    } catch (InterruptedException e)
+                    }
+                    catch (InterruptedException e)
                     {
                         throw new RuntimeException(e);
                     }
                 }
             });
-        } catch (Exception e)
+        }
+        catch (Exception e)
         {
             throw new RuntimeException(e);
-        } finally
+        }
+        finally
         {
             BytecodeViewer.updateBusyStatus(false);
         }
@@ -318,11 +362,13 @@ public class GoToAction extends AbstractAction
                 Element root = panel.textArea.getDocument().getDefaultRootElement();
                 int startOffset = root.getElement(line - 1).getStartOffset() + (columnStart - 1);
                 panel.textArea.setCaretPosition(startOffset);
+
                 for (CaretListener caretListener : panel.textArea.getCaretListeners())
                 {
                     if (caretListener instanceof BytecodeViewPanelUpdater.MarkerCaretListener)
                     {
                         BytecodeViewPanelUpdater.MarkerCaretListener markerCaretListener = (BytecodeViewPanelUpdater.MarkerCaretListener) caretListener;
+
                         markerCaretListener.caretUpdate(new CaretEvent(panel.textArea)
                         {
                             @Override

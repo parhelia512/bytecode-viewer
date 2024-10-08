@@ -18,15 +18,11 @@
 
 package the.bytecode.club.bytecodeviewer.gui.components;
 
-import java.awt.Dimension;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import the.bytecode.club.bytecodeviewer.BytecodeViewer;
 import the.bytecode.club.bytecodeviewer.util.JarUtils;
+
+import javax.swing.*;
+import java.awt.*;
 
 /**
  * The export as Jar UI.
@@ -61,11 +57,13 @@ public class ExportJar extends JFrame
         btnNewButton.addActionListener(arg0 ->
         {
             BytecodeViewer.updateBusyStatus(true);
+
             Thread t = new Thread(() ->
             {
                 JarUtils.saveAsJar(BytecodeViewer.getLoadedClasses(), jarPath, manifest.getText());
                 BytecodeViewer.updateBusyStatus(false);
             }, "Jar Export");
+
             t.start();
             dispose();
         });

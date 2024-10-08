@@ -58,7 +58,8 @@ public class SearchableRSyntaxTextArea extends RSyntaxTextArea
             scrollPane.getHorizontalScrollBar().setForeground(blackScrollForeground);
             scrollPane.getVerticalScrollBar().setBackground(blackScrollBackground);
             scrollPane.getVerticalScrollBar().setForeground(blackScrollForeground);
-        } else if (Configuration.lafTheme.isDark())
+        }
+        else if (Configuration.lafTheme.isDark())
         {
             //this fixes the white border on the jScrollBar panes
             scrollPane.getHorizontalScrollBar().setBackground(darkScrollBackground);
@@ -73,10 +74,12 @@ public class SearchableRSyntaxTextArea extends RSyntaxTextArea
 
         addKeyListener(new PressKeyListener(keyEvent ->
         {
-            if ((keyEvent.getKeyCode() == KeyEvent.VK_F) && ((keyEvent.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0))
+            if ((keyEvent.getKeyCode() == KeyEvent.VK_F)
+                && ((keyEvent.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0))
                 this.textAreaSearchPanel.getSearchInput().requestFocusInWindow();
 
-            if (onCtrlS != null && (keyEvent.getKeyCode() == KeyEvent.VK_S) && ((keyEvent.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0))
+            if (onCtrlS != null && (keyEvent.getKeyCode() == KeyEvent.VK_S)
+                && ((keyEvent.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0))
             {
                 onCtrlS.run();
                 return;
@@ -108,7 +111,8 @@ public class SearchableRSyntaxTextArea extends RSyntaxTextArea
         //set number-bar font
         setFont(newFont);
 
-        SwingUtilities.invokeLater(() -> {
+        SwingUtilities.invokeLater(() ->
+        {
             //attach CTRL + Mouse Wheel Zoom
             attachCtrlMouseWheelZoom();
 
@@ -130,8 +134,10 @@ public class SearchableRSyntaxTextArea extends RSyntaxTextArea
 
     public void attachCtrlMouseWheelZoom()
     {
-        scrollPane.addMouseWheelListener(e -> {
-            if (getText().isEmpty()) return;
+        scrollPane.addMouseWheelListener(e ->
+        {
+            if (getText().isEmpty())
+                return;
             if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0)
             {
                 Font font = getFont();
@@ -176,7 +182,8 @@ public class SearchableRSyntaxTextArea extends RSyntaxTextArea
                 int end = getLineEndOffset(line);
                 return getText(start, end - start).trim();
             }
-        } catch (BadLocationException ignored)
+        }
+        catch (BadLocationException ignored)
         {
         }
         return "";

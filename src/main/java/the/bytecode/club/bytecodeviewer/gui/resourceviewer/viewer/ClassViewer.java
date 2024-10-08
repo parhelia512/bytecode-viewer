@@ -28,6 +28,7 @@ import the.bytecode.club.bytecodeviewer.gui.resourceviewer.BytecodeViewPanel;
 import the.bytecode.club.bytecodeviewer.resources.Resource;
 import the.bytecode.club.bytecodeviewer.resources.ResourceContainer;
 import the.bytecode.club.bytecodeviewer.util.MethodParser;
+import the.bytecode.club.bytecodeviewer.util.SleepUtil;
 
 import javax.swing.*;
 import javax.swing.text.BadLocationException;
@@ -102,16 +103,10 @@ public class ClassViewer extends ResourceViewer
         {
             BytecodeViewer.updateBusyStatus(true);
 
+            //wait until it's not dumping
             while (Configuration.currentlyDumping)
             {
-                //wait until it's not dumping
-                try
-                {
-                    Thread.sleep(100);
-                } catch (InterruptedException e)
-                {
-                    e.printStackTrace();
-                }
+                SleepUtil.sleep(100);
             }
 
             BytecodeViewer.updateBusyStatus(false);
@@ -135,9 +130,12 @@ public class ClassViewer extends ResourceViewer
 
             Configuration.warnForEditing = true;
 
-            if (!BytecodeViewer.viewer.autoCompileOnRefresh.isSelected() && !BytecodeViewer.viewer.compileOnSave.isSelected())
+            if (!BytecodeViewer.viewer.autoCompileOnRefresh.isSelected()
+                && !BytecodeViewer.viewer.compileOnSave.isSelected())
             {
-                BytecodeViewer.showMessage("Make sure to compile (File>Compile or Ctrl + T) whenever you want to " + "test or export your changes.\nYou can set compile automatically on refresh or on save " + "in the settings menu.");
+                BytecodeViewer.showMessage("Make sure to compile (File>Compile or Ctrl + T) whenever you want to "
+                    + "test or export your changes.\nYou can set compile automatically on refresh or on save "
+                    + "in the settings menu.");
 
                 SettingsSerializer.saveSettingsAsync();
             }
@@ -175,8 +173,10 @@ public class ClassViewer extends ResourceViewer
         {
             case 0:
                 return bytecodeViewPanel1;
+
             case 1:
                 return bytecodeViewPanel2;
+
             case 2:
                 return bytecodeViewPanel3;
         }
@@ -273,7 +273,8 @@ public class ClassViewer extends ResourceViewer
         try
         {
             area.setCaretPosition(area.getLineStartOffset(line));
-        } catch (BadLocationException ignored)
+        }
+        catch (BadLocationException ignored)
         {
         }
     }
@@ -281,41 +282,57 @@ public class ClassViewer extends ResourceViewer
     public void resetDivider()
     {
 		/*
-		This may be a bit overkill on how we handle setting/changing selected panels, but we now handle if only one panel is
-		selected, to not show any split panes but just the panel text.
+		 * This may be a bit overkill on how we handle setting/changing selected panels, but we now handle if only one panel is
+		 * selected, to not show any split panes but just the panel text.
 		 */
 
         SwingUtilities.invokeLater(() ->
         {
             // This clears any component so we can "repaint" our components based on the users selections
-            for (Component c : this.getComponents()) {
-				if (c instanceof BytecodeViewPanel || c instanceof JSplitPane) {
-					this.remove(c);
-				}
+            for (Component c : this.getComponents())
+            {
+                if (c instanceof BytecodeViewPanel || c instanceof JSplitPane)
+                    this.remove(c);
             }
 
             this.sp.setResizeWeight(0.5);
             setDividerLocation(sp, 0.5);
 
-			/* If panel 1 and panel 2 are ticked but not panel 3 */
-            if (bytecodeViewPanel1.decompiler != Decompiler.NONE && bytecodeViewPanel2.decompiler != Decompiler.NONE && bytecodeViewPanel3.decompiler == Decompiler.NONE) {
+            /* If panel 1 and panel 2 are ticked but not panel 3 */
+            if (bytecodeViewPanel1.decompiler != Decompiler.NONE
+                && bytecodeViewPanel2.decompiler != Decompiler.NONE
+                && bytecodeViewPanel3.decompiler == Decompiler.NONE)
+            {
                 this.sp.setLeftComponent(bytecodeViewPanel1);
                 this.sp.setRightComponent(bytecodeViewPanel2);
                 this.add(sp, BorderLayout.CENTER);
-            } /* If panel 1 and panel 3 are ticked but not panel 2 */
-            else if (bytecodeViewPanel1.decompiler != Decompiler.NONE && bytecodeViewPanel2.decompiler == Decompiler.NONE && bytecodeViewPanel3.decompiler != Decompiler.NONE) {
+            }
+
+            /* If panel 1 and panel 3 are ticked but not panel 2 */
+            else if (bytecodeViewPanel1.decompiler != Decompiler.NONE
+                && bytecodeViewPanel2.decompiler == Decompiler.NONE
+                && bytecodeViewPanel3.decompiler != Decompiler.NONE)
+            {
                 this.sp.setLeftComponent(bytecodeViewPanel1);
                 this.sp.setRightComponent(bytecodeViewPanel3);
                 this.add(sp, BorderLayout.CENTER);
-            } /* If panel 2 and panel 3 are ticked but not panel 1 */
-            else if (bytecodeViewPanel1.decompiler == Decompiler.NONE && bytecodeViewPanel2.decompiler != Decompiler.NONE && bytecodeViewPanel3.decompiler != Decompiler.NONE) {
+            }
+
+            /* If panel 2 and panel 3 are ticked but not panel 1 */
+            else if (bytecodeViewPanel1.decompiler == Decompiler.NONE
+                && bytecodeViewPanel2.decompiler != Decompiler.NONE
+                && bytecodeViewPanel3.decompiler != Decompiler.NONE)
+            {
                 this.sp.setLeftComponent(bytecodeViewPanel2);
                 this.sp.setRightComponent(bytecodeViewPanel3);
                 this.add(sp, BorderLayout.CENTER);
             }
 
             // If all panels are selected, create the second split pane
-            if (bytecodeViewPanel1.decompiler != Decompiler.NONE && bytecodeViewPanel2.decompiler != Decompiler.NONE && bytecodeViewPanel3.decompiler != Decompiler.NONE) {
+            if (bytecodeViewPanel1.decompiler != Decompiler.NONE
+                && bytecodeViewPanel2.decompiler != Decompiler.NONE
+                && bytecodeViewPanel3.decompiler != Decompiler.NONE)
+            {
                 this.sp.setLeftComponent(bytecodeViewPanel1);
                 this.sp.setRightComponent(bytecodeViewPanel2);
                 this.sp2 = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sp, bytecodeViewPanel3);
@@ -323,14 +340,27 @@ public class ClassViewer extends ResourceViewer
                 this.add(sp2);
             }
 
-			/* If view panel 1 is only ticked... */
-            if (bytecodeViewPanel1.decompiler != Decompiler.NONE && bytecodeViewPanel2.decompiler == Decompiler.NONE && bytecodeViewPanel3.decompiler == Decompiler.NONE) {
+            /* If view panel 1 is only ticked... */
+            if (bytecodeViewPanel1.decompiler != Decompiler.NONE
+                && bytecodeViewPanel2.decompiler == Decompiler.NONE
+                && bytecodeViewPanel3.decompiler == Decompiler.NONE)
+            {
                 this.add(bytecodeViewPanel1, BorderLayout.CENTER);
-            } /* If view panel 2 is only ticked... */
-            else if (bytecodeViewPanel1.decompiler == Decompiler.NONE && bytecodeViewPanel2.decompiler != Decompiler.NONE && bytecodeViewPanel3.decompiler == Decompiler.NONE) {
+            }
+
+            /* If view panel 2 is only ticked... */
+            else if (bytecodeViewPanel1.decompiler == Decompiler.NONE
+                && bytecodeViewPanel2.decompiler != Decompiler.NONE
+                && bytecodeViewPanel3.decompiler == Decompiler.NONE)
+            {
                 this.add(bytecodeViewPanel2, BorderLayout.CENTER);
-            } /* If view panel 3 is only ticked... */
-            else if (bytecodeViewPanel1.decompiler == Decompiler.NONE && bytecodeViewPanel2.decompiler == Decompiler.NONE && bytecodeViewPanel3.decompiler != Decompiler.NONE){
+            }
+
+            /* If view panel 3 is only ticked... */
+            else if (bytecodeViewPanel1.decompiler == Decompiler.NONE
+                && bytecodeViewPanel2.decompiler == Decompiler.NONE
+                && bytecodeViewPanel3.decompiler != Decompiler.NONE)
+            {
                 this.add(bytecodeViewPanel3, BorderLayout.CENTER);
             }
         });
@@ -357,14 +387,16 @@ public class ClassViewer extends ResourceViewer
                     }
                 });
             }
-        } else
+        }
+        else
         {
             splitter.addHierarchyListener(new HierarchyListener()
             {
                 @Override
                 public void hierarchyChanged(HierarchyEvent e)
                 {
-                    if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && splitter.isShowing())
+                    if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0
+                        && splitter.isShowing())
                     {
                         splitter.removeHierarchyListener(this);
                         setDividerLocation(splitter, proportion);

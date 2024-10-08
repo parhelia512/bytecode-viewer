@@ -18,23 +18,7 @@
 
 package the.bytecode.club.bytecodeviewer.util;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Enumeration;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.jar.JarOutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipException;
-import java.util.zip.ZipInputStream;
-import me.konloch.kontainer.io.DiskWriter;
+import com.konloch.disklib.DiskWriter;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.io.FilenameUtils;
@@ -44,11 +28,19 @@ import the.bytecode.club.bytecodeviewer.BytecodeViewer;
 import the.bytecode.club.bytecodeviewer.api.ASMUtil;
 import the.bytecode.club.bytecodeviewer.resources.ResourceContainer;
 
-import static the.bytecode.club.bytecodeviewer.Constants.fs;
+import java.io.*;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.jar.JarOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipInputStream;
+
+import static the.bytecode.club.bytecodeviewer.Constants.FS;
 
 /**
  * Loading and saving jars
- *
+ * <p>
  * NOTE: This is in the process of being replaced with the Import & Export API
  *
  * @author Konloch
@@ -60,7 +52,7 @@ import static the.bytecode.club.bytecodeviewer.Constants.fs;
 public class JarUtils
 {
     public static final Object LOCK = new Object();
-    
+
     /**
      * Loads the classes and resources from the input jar file
      *
@@ -73,36 +65,54 @@ public class JarUtils
         Map<String, byte[]> files = new LinkedHashMap<>();
 
         try (FileInputStream fis = new FileInputStream(jarFile);
-             ZipInputStream jis = new ZipInputStream(fis)) {
+             ZipInputStream jis = new ZipInputStream(fis))
+        {
             ZipEntry entry;
-            while ((entry = jis.getNextEntry()) != null) {
-                try {
+            while ((entry = jis.getNextEntry()) != null)
+            {
+                try
+                {
                     final String name = entry.getName();
                     final byte[] bytes = MiscUtils.getBytes(jis);
-                    if (!name.endsWith(".class")) {
+                    if (!name.endsWith(".class"))
+                    {
                         if (!entry.isDirectory())
                             files.put(name, bytes);
-                    } else {
-                        if (FileHeaderUtils.doesFileHeaderMatch(bytes, FileHeaderUtils.JAVA_CLASS_FILE_HEADER)) {
-                            try {
+                    }
+                    else
+                    {
+                        if (FileHeaderUtils.doesFileHeaderMatch(bytes, FileHeaderUtils.JAVA_CLASS_FILE_HEADER))
+                        {
+                            try
+                            {
                                 final ClassNode cn = getNode(bytes);
                                 container.resourceClasses.put(FilenameUtils.removeExtension(name), cn);
-                            } catch (Exception e) {
+                            }
+                            catch (Exception e)
+                            {
                                 System.err.println("Skipping: " + name);
                                 e.printStackTrace();
                             }
-                        } else {
+                        }
+                        else
+                        {
                             if (!entry.isDirectory())
                                 files.put(name, bytes);
                             //System.out.println(jarFile + ">" + name + ": Header does not start with CAFEBABE, ignoring.");
                         }
                     }
 
-                } catch (java.io.EOFException | ZipException e) {
+                }
+                catch (java.io.EOFException | ZipException e)
+                {
                     //ignore cause apache unzip
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     BytecodeViewer.handleException(e);
-                } finally {
+                }
+                finally
+                {
                     jis.closeEntry();
                 }
             }
@@ -110,8 +120,8 @@ public class JarUtils
         container.resourceFiles = files;
         BytecodeViewer.addResourceContainer(container);
     }
-    
-    
+
+
     /**
      * A fallback solution to zip/jar archive importing if the first fails
      *
@@ -126,27 +136,39 @@ public class JarUtils
         ResourceContainer container = new ResourceContainer(jarFile);
         Map<String, byte[]> files = new LinkedHashMap<>();
 
-        try (ZipFile zipFile = new ZipFile(jarFile)) {
+        try (ZipFile zipFile = new ZipFile(jarFile))
+        {
             Enumeration<? extends ZipArchiveEntry> entries = zipFile.getEntries();
-            while (entries.hasMoreElements()) {
+            while (entries.hasMoreElements())
+            {
                 ZipArchiveEntry entry = entries.nextElement();
                 String name = entry.getName();
-                if (!entry.isDirectory()) {
-                    try (InputStream in = zipFile.getInputStream(entry)) {
+                if (!entry.isDirectory())
+                {
+                    try (InputStream in = zipFile.getInputStream(entry))
+                    {
                         final byte[] bytes = MiscUtils.getBytes(in);
 
-                        if (!name.endsWith(".class")) {
+                        if (!name.endsWith(".class"))
+                        {
                             files.put(name, bytes);
-                        } else {
+                        }
+                        else
+                        {
                             if (FileHeaderUtils.doesFileHeaderMatch(bytes, FileHeaderUtils.JAVA_CLASS_FILE_HEADER))
                             {
-                                try {
+                                try
+                                {
                                     final ClassNode cn = getNode(bytes);
                                     container.resourceClasses.put(FilenameUtils.removeExtension(name), cn);
-                                } catch (Exception e) {
+                                }
+                                catch (Exception e)
+                                {
                                     e.printStackTrace();
                                 }
-                            } else {
+                            }
+                            else
+                            {
                                 files.put(name, bytes);
                             }
                         }
@@ -159,33 +181,47 @@ public class JarUtils
         container.resourceFiles = files;
         BytecodeViewer.addResourceContainer(container);
     }
-    
+
     public static List<ClassNode> loadClasses(File jarFile) throws IOException
     {
         List<ClassNode> classes = new ArrayList<>();
         try (FileInputStream fis = new FileInputStream(jarFile);
-             ZipInputStream jis = new ZipInputStream(fis)) {
+             ZipInputStream jis = new ZipInputStream(fis))
+        {
             ZipEntry entry;
-            while ((entry = jis.getNextEntry()) != null) {
-                try {
+            while ((entry = jis.getNextEntry()) != null)
+            {
+                try
+                {
                     final String name = entry.getName();
-                    if (name.endsWith(".class")) {
+                    if (name.endsWith(".class"))
+                    {
                         byte[] bytes = MiscUtils.getBytes(jis);
-                        if (FileHeaderUtils.doesFileHeaderMatch(bytes, FileHeaderUtils.JAVA_CLASS_FILE_HEADER)) {
-                            try {
+                        if (FileHeaderUtils.doesFileHeaderMatch(bytes, FileHeaderUtils.JAVA_CLASS_FILE_HEADER))
+                        {
+                            try
+                            {
                                 final ClassNode cn = getNode(bytes);
                                 classes.add(cn);
-                            } catch (Exception e) {
+                            }
+                            catch (Exception e)
+                            {
                                 e.printStackTrace();
                             }
-                        } else {
+                        }
+                        else
+                        {
                             System.out.println(jarFile + ">" + name + ": Header does not start with CAFEBABE, ignoring.");
                         }
                     }
 
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     BytecodeViewer.handleException(e);
-                } finally {
+                }
+                finally
+                {
                     jis.closeEntry();
                 }
             }
@@ -200,26 +236,35 @@ public class JarUtils
      * @param zipFile the input zip file
      * @throws IOException
      */
-    public static Map<String, byte[]> loadResources(File zipFile) throws IOException {
+    public static Map<String, byte[]> loadResources(File zipFile) throws IOException
+    {
         if (!zipFile.exists())
             return new LinkedHashMap<>(); // just ignore (don't return null for null-safety!)
-    
+
         Map<String, byte[]> files = new LinkedHashMap<>();
 
-        try (ZipInputStream jis = new ZipInputStream(new FileInputStream(zipFile))) {
+        try (ZipInputStream jis = new ZipInputStream(new FileInputStream(zipFile)))
+        {
             ZipEntry entry;
-            while ((entry = jis.getNextEntry()) != null) {
-                try {
+            while ((entry = jis.getNextEntry()) != null)
+            {
+                try
+                {
                     final String name = entry.getName();
-                    if (!name.endsWith(".class") && !name.endsWith(".dex")) {
+                    if (!name.endsWith(".class") && !name.endsWith(".dex"))
+                    {
                         if (!entry.isDirectory())
                             files.put(name, MiscUtils.getBytes(jis));
 
                         jis.closeEntry();
                     }
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     BytecodeViewer.handleException(e);
-                } finally {
+                }
+                finally
+                {
                     jis.closeEntry();
                 }
             }
@@ -250,11 +295,12 @@ public class JarUtils
      * @param path     the exact path of the output jar file
      * @param manifest the manifest contents
      */
-    public static void saveAsJar(List<ClassNode> nodeList, String path,
-                                 String manifest) {
-        try (FileOutputStream fos = new FileOutputStream(path);
-             JarOutputStream out = new JarOutputStream(fos)) {
-            for (ClassNode cn : nodeList) {
+    public static void saveAsJar(List<ClassNode> nodeList, String path, String manifest)
+    {
+        try (FileOutputStream fos = new FileOutputStream(path); JarOutputStream out = new JarOutputStream(fos))
+        {
+            for (ClassNode cn : nodeList)
+            {
                 ClassWriter cw = new ClassWriter(0);
                 cn.accept(cw);
 
@@ -267,17 +313,22 @@ public class JarUtils
             out.write((manifest.trim() + "\r\n\r\n").getBytes());
             out.closeEntry();
 
-            for (ResourceContainer container : BytecodeViewer.resourceContainers.values()) {
-                for (Entry<String, byte[]> entry : container.resourceFiles.entrySet()) {
+            for (ResourceContainer container : BytecodeViewer.resourceContainers.values())
+            {
+                for (Entry<String, byte[]> entry : container.resourceFiles.entrySet())
+                {
                     String filename = entry.getKey();
-                    if (!filename.startsWith("META-INF")) {
+                    if (!filename.startsWith("META-INF"))
+                    {
                         out.putNextEntry(new ZipEntry(filename));
                         out.write(entry.getValue());
                         out.closeEntry();
                     }
                 }
             }
-        } catch (IOException e) {
+        }
+        catch (IOException e)
+        {
             BytecodeViewer.handleException(e);
         }
     }
@@ -296,23 +347,22 @@ public class JarUtils
             try (FileOutputStream fos = new FileOutputStream(path);
                  JarOutputStream out = new JarOutputStream(fos))
             {
-                List<String> noDupe = new ArrayList<>();
+                HashSet<String> fileCollisionPrevention = new HashSet<>();
+
                 for (ClassNode cn : nodeList)
                 {
                     ClassWriter cw = new ClassWriter(0);
                     cn.accept(cw);
-            
+
                     String name = cn.name + ".class";
-            
-                    if (!noDupe.contains(name))
+
+                    if (fileCollisionPrevention.add(name))
                     {
-                        noDupe.add(name);
                         out.putNextEntry(new ZipEntry(name));
                         out.write(cw.toByteArray());
                         out.closeEntry();
                     }
                 }
-                noDupe.clear();
             }
             catch (IOException e)
             {
@@ -327,19 +377,24 @@ public class JarUtils
      * @param nodeList The loaded ClassNodes
      * @param dir      the exact jar output path
      */
-    public static void saveAsJarClassesOnlyToDir(List<ClassNode> nodeList, String dir) {
-        try {
-            for (ClassNode cn : nodeList) {
+    public static void saveAsJarClassesOnlyToDir(List<ClassNode> nodeList, String dir)
+    {
+        try
+        {
+            for (ClassNode cn : nodeList)
+            {
                 ClassWriter cw = new ClassWriter(0);
                 cn.accept(cw);
 
-                String name = dir + fs + cn.name + ".class";
+                String name = dir + FS + cn.name + ".class";
                 File f = new File(name);
                 f.mkdirs();
 
-                DiskWriter.replaceFileBytes(name, cw.toByteArray(), false);
+                DiskWriter.write(name, cw.toByteArray());
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             BytecodeViewer.handleException(e);
         }
     }
@@ -350,30 +405,39 @@ public class JarUtils
      * @param nodeList The loaded ClassNodes
      * @param path     the exact jar output path
      */
-    public static void saveAsJar(List<ClassNode> nodeList, String path) {
+    public static void saveAsJar(List<ClassNode> nodeList, String path) throws IOException
+    {
         try (FileOutputStream fos = new FileOutputStream(path);
-             JarOutputStream out = new JarOutputStream(fos)) {
-            List<String> noDupe = new ArrayList<>();
-            for (ClassNode cn : nodeList) {
+             JarOutputStream out = new JarOutputStream(fos))
+        {
+            List<String> fileCollisionPrevention  = new ArrayList<>();
+            for (ClassNode cn : nodeList)
+            {
                 ClassWriter cw = new ClassWriter(0);
                 cn.accept(cw);
 
                 String name = cn.name + ".class";
 
-                if (!noDupe.contains(name)) {
-                    noDupe.add(name);
+                if (!fileCollisionPrevention .contains(name))
+                {
+                    fileCollisionPrevention .add(name);
                     out.putNextEntry(new ZipEntry(name));
                     out.write(cw.toByteArray());
                     out.closeEntry();
                 }
             }
 
-            for (ResourceContainer container : BytecodeViewer.resourceContainers.values()) {
-                for (Entry<String, byte[]> entry : container.resourceFiles.entrySet()) {
+            for (ResourceContainer container : BytecodeViewer.resourceContainers.values())
+            {
+                for (Entry<String, byte[]> entry : container.resourceFiles.entrySet())
+                {
                     String filename = entry.getKey();
-                    if (!filename.startsWith("META-INF")) {
-                        if (!noDupe.contains(filename)) {
-                            noDupe.add(filename);
+
+                    if (!filename.startsWith("META-INF"))
+                    {
+                        if (!fileCollisionPrevention .contains(filename))
+                        {
+                            fileCollisionPrevention .add(filename);
                             out.putNextEntry(new ZipEntry(filename));
                             out.write(entry.getValue());
                             out.closeEntry();
@@ -382,9 +446,7 @@ public class JarUtils
                 }
             }
 
-            noDupe.clear();
-        } catch (IOException e) {
-            BytecodeViewer.handleException(e);
+            fileCollisionPrevention .clear();
         }
     }
 }

@@ -18,13 +18,10 @@
 
 package the.bytecode.club.bytecodeviewer.searching.impl;
 
-import java.util.Iterator;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.*;
 import the.bytecode.club.bytecodeviewer.resources.ResourceContainer;
+
+import java.util.Iterator;
 
 /**
  * Field call searching
@@ -36,22 +33,28 @@ import the.bytecode.club.bytecodeviewer.resources.ResourceContainer;
 public class FieldCallSearch extends MethodCallSearch
 {
     @Override
+    public String toString()
+    {
+        return "Field Call Search";
+    }
+
+    @Override
     public void search(ResourceContainer container, String resourceWorkingName, ClassNode node, boolean exact)
     {
         final Iterator<MethodNode> methods = node.methods.iterator();
-        
+
         String searchOwner = mOwner.getText();
         if (searchOwner.isEmpty())
             searchOwner = null;
-        
+
         String searchName = mName.getText();
         if (searchName.isEmpty())
             searchName = null;
-        
+
         String searchDesc = mDesc.getText();
         if (searchDesc.isEmpty())
             searchDesc = null;
-        
+
         while (methods.hasNext())
         {
             final MethodNode method = methods.next();
@@ -62,10 +65,10 @@ public class FieldCallSearch extends MethodCallSearch
                 if (insnNode instanceof FieldInsnNode)
                 {
                     final FieldInsnNode min = (FieldInsnNode) insnNode;
-                    
+
                     if (searchName == null && searchOwner == null && searchDesc == null)
                         continue;
-                    
+
                     if (exact)
                     {
                         if (searchName != null && !searchName.equals(min.name))
@@ -84,7 +87,7 @@ public class FieldCallSearch extends MethodCallSearch
                         if (searchDesc != null && !min.desc.contains(searchDesc))
                             continue;
                     }
-    
+
                     found(container, resourceWorkingName, node, method, insnNode);
                 }
             }

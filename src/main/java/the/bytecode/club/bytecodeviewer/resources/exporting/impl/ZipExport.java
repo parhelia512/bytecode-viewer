@@ -18,8 +18,6 @@
 
 package the.bytecode.club.bytecodeviewer.resources.exporting.impl;
 
-import java.io.File;
-import javax.swing.JFileChooser;
 import the.bytecode.club.bytecodeviewer.BytecodeViewer;
 import the.bytecode.club.bytecodeviewer.Configuration;
 import the.bytecode.club.bytecodeviewer.gui.components.FileChooser;
@@ -28,47 +26,69 @@ import the.bytecode.club.bytecodeviewer.util.DialogUtils;
 import the.bytecode.club.bytecodeviewer.util.JarUtils;
 import the.bytecode.club.bytecodeviewer.util.MiscUtils;
 
+import javax.swing.*;
+import java.io.File;
+import java.io.IOException;
+
 /**
  * @author Konloch
  * @since 6/27/2021
  */
 public class ZipExport implements Exporter
 {
-	@Override
-	public void promptForExport()
-	{
-		if (BytecodeViewer.promptIfNoLoadedResources())
-			return;
-		
-		Thread exportThread = new Thread(() ->
-		{
-			if (!BytecodeViewer.autoCompileSuccessful())
-				return;
-			
-			JFileChooser fc = new FileChooser(Configuration.getLastSaveDirectory(),
-					"Select Zip Export",
-					"Zip Archives",
-					"zip");
-			
-			int returnVal = fc.showSaveDialog(BytecodeViewer.viewer);
-			if (returnVal == JFileChooser.APPROVE_OPTION)
-			{
-				Configuration.setLastSaveDirectory(fc.getSelectedFile());
-				
-				final File file = MiscUtils.autoAppendFileExtension(".zip", fc.getSelectedFile()); //auto append .zip extension
-				
-				if (!DialogUtils.canOverwriteFile(file))
-					return;
-				
-				BytecodeViewer.updateBusyStatus(true);
-				Thread saveThread = new Thread(() ->
-				{
-					JarUtils.saveAsJar(BytecodeViewer.getLoadedClasses(), file.getAbsolutePath());
-					BytecodeViewer.updateBusyStatus(false);
-				}, "Jar Export");
-				saveThread.start();
-			}
-		}, "Resource Export");
-		exportThread.start();
-	}
+    @Override
+    public void promptForExport()
+    {
+        if (BytecodeViewer.promptIfNoLoadedResources())
+            return;
+
+        Thread exportThread = new Thread(() ->
+        {
+            if (!BytecodeViewer.autoCompileSuccessful())
+                return;
+
+            try
+            {
+                JFileChooser fc = FileChooser.create(Configuration.getLastSaveDirectory(),
+                    "Select Zip Export", "Zip Archives", "zip");
+
+                int returnVal = fc.showSaveDialog(BytecodeViewer.viewer);
+                if (returnVal == JFileChooser.APPROVE_OPTION)
+                {
+                    Configuration.setLastSaveDirectory(fc.getSelectedFile());
+
+                    final File file = MiscUtils.autoAppendFileExtension(".zip", fc.getSelectedFile()); //auto append .zip extension
+
+                    if (!DialogUtils.canOverwriteFile(file))
+                        return;
+
+                    BytecodeViewer.updateBusyStatus(true);
+
+                    Thread saveThread = new Thread(() ->
+                    {
+                        try
+                        {
+                            JarUtils.saveAsJar(BytecodeViewer.getLoadedClasses(), file.getAbsolutePath());
+                        }
+                        catch (IOException ex)
+                        {
+                            BytecodeViewer.handleException(ex);
+                        }
+                        finally
+                        {
+                            BytecodeViewer.updateBusyStatus(false);
+                        }
+                    }, "Jar Export");
+
+                    saveThread.start();
+                }
+            }
+            catch (Exception e)
+            {
+                BytecodeViewer.handleException(e);
+            }
+        }, "Resource Export");
+
+        exportThread.start();
+    }
 }

@@ -18,27 +18,6 @@
 
 package the.bytecode.club.bytecodeviewer.decompilers.impl;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.zip.ZipException;
-import java.util.zip.ZipOutputStream;
 import org.apache.commons.io.IOUtils;
 import org.benf.cfr.reader.api.CfrDriver;
 import org.benf.cfr.reader.api.ClassFileSource;
@@ -50,112 +29,161 @@ import org.benf.cfr.reader.util.getopt.Options;
 import org.benf.cfr.reader.util.getopt.OptionsImpl;
 import org.objectweb.asm.tree.ClassNode;
 import the.bytecode.club.bytecodeviewer.BytecodeViewer;
+import the.bytecode.club.bytecodeviewer.Constants;
 import the.bytecode.club.bytecodeviewer.api.ExceptionUI;
-import the.bytecode.club.bytecodeviewer.decompilers.InternalDecompiler;
+import the.bytecode.club.bytecodeviewer.decompilers.AbstractDecompiler;
 import the.bytecode.club.bytecodeviewer.resources.ResourceContainer;
 import the.bytecode.club.bytecodeviewer.translation.TranslatedStrings;
+import the.bytecode.club.bytecodeviewer.util.ExceptionUtils;
 
-import static the.bytecode.club.bytecodeviewer.Constants.nl;
-import static the.bytecode.club.bytecodeviewer.translation.TranslatedStrings.CFR;
-import static the.bytecode.club.bytecodeviewer.translation.TranslatedStrings.ERROR;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.zip.ZipException;
+import java.util.zip.ZipOutputStream;
+
+import static the.bytecode.club.bytecodeviewer.Constants.NL;
+import static the.bytecode.club.bytecodeviewer.translation.TranslatedStrings.*;
 
 /**
  * CFR Java Wrapper
  *
- * @author GraxCode
- *         Taken mostly out of Threadtear.
+ * @author GraxCode (Taken mostly out of Threadtear)
  */
-public class CFRDecompiler extends InternalDecompiler {
+
+public class CFRDecompiler extends AbstractDecompiler
+{
 
     private static final String CLASS_SUFFIX = ".class";
 
-    @Override
-    public String decompileClassNode(ClassNode cn, byte[] content) {
-        return decompile(cn, cn.name, content);
+    public CFRDecompiler()
+    {
+        super("CFR Decompiler", "cfr");
     }
 
-    private String decompile(ClassNode cn, String name, byte[] content) {
-        try {
-            String classPath = name + (name.endsWith(CLASS_SUFFIX) ? "" : CLASS_SUFFIX);
+    @Override
+    public String decompileClassNode(ClassNode cn, byte[] bytes)
+    {
+        return decompile(cn, cn.name, bytes);
+    }
 
+    private String decompile(ClassNode cn, String name, byte[] content)
+    {
+        String exception;
+
+        try
+        {
+            String classPath = name + (name.endsWith(CLASS_SUFFIX) ? "" : CLASS_SUFFIX);
             StringBuilder builder = new StringBuilder();
             Consumer<SinkReturns.Decompiled> dumpDecompiled = d -> builder.append(d.getJava());
 
+            //initialize CFR
             Options options = generateOptions();
             ClassFileSource source = new BCVDataSource(options, cn, classPath, content);
-            CfrDriver driver = new CfrDriver.Builder()
-                    .withClassFileSource(source)
-                    .withBuiltOptions(options)
-                    .withOutputSink(new BCVOutputSinkFactory(dumpDecompiled))
-                    .build();
+            CfrDriver driver = new CfrDriver.Builder().withClassFileSource(source).withBuiltOptions(options).withOutputSink(new BCVOutputSinkFactory(dumpDecompiled)).build();
+
+            //decompile the class-file
             driver.analyse(Collections.singletonList(name));
 
+            //handle simulated errors
+            if(Constants.DEV_FLAG_DECOMPILERS_SIMULATED_ERRORS)
+                throw new RuntimeException(DEV_MODE_SIMULATED_ERROR.toString());
+
+            //return the builder contents
             return builder.toString();
-        } catch (Throwable t) {
-            t.printStackTrace();
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            t.printStackTrace(pw);
-            return CFR + " " + ERROR + "! " + ExceptionUI.SEND_STACKTRACE_TO +
-                    nl + nl + TranslatedStrings.SUGGESTED_FIX_DECOMPILER_ERROR +
-                    nl + nl + sw;
         }
+        catch (Throwable e)
+        {
+            exception = ExceptionUtils.exceptionToString(e);
+        }
+
+        return CFR + " " + ERROR + "! " + ExceptionUI.SEND_STACKTRACE_TO + NL + NL
+            + TranslatedStrings.SUGGESTED_FIX_DECOMPILER_ERROR + NL + NL + exception;
     }
 
     @Override
-    public void decompileToZip(String sourceJar, String outJar) {
-        try (JarFile jfile = new JarFile(new File(sourceJar));
-             FileOutputStream dest = new FileOutputStream(outJar);
-             BufferedOutputStream buffDest = new BufferedOutputStream(dest);
-             ZipOutputStream out = new ZipOutputStream(buffDest)) {
+    public void decompileToZip(String sourceJar, String outJar)
+    {
+        try (JarFile jarFile = new JarFile(new File(sourceJar));
+             FileOutputStream destination = new FileOutputStream(outJar);
+             BufferedOutputStream buffer = new BufferedOutputStream(destination);
+             ZipOutputStream zip = new ZipOutputStream(buffer))
+        {
             byte[] data = new byte[1024];
-
-            Enumeration<JarEntry> ent = jfile.entries();
+            Enumeration<JarEntry> ent = jarFile.entries();
             Set<JarEntry> history = new HashSet<>();
-            while (ent.hasMoreElements()) {
+
+            while (ent.hasMoreElements())
+            {
                 JarEntry entry = ent.nextElement();
-                if (entry.getName().endsWith(CLASS_SUFFIX)) {
+
+                if (entry.getName().endsWith(CLASS_SUFFIX))
+                {
                     JarEntry etn = new JarEntry(entry.getName().replace(CLASS_SUFFIX, ".java"));
-                    if (history.add(etn)) {
-                        out.putNextEntry(etn);
-                        try {
-                            IOUtils.write(decompile(null, entry.getName(),
-                                            IOUtils.toByteArray(jfile.getInputStream(entry))),
-                                    out, StandardCharsets.UTF_8);
-                        } finally {
-                            out.closeEntry();
+
+                    if (history.add(etn))
+                    {
+                        zip.putNextEntry(etn);
+
+                        try
+                        {
+                            IOUtils.write(decompile(null, entry.getName(), IOUtils.toByteArray(jarFile.getInputStream(entry))), zip, StandardCharsets.UTF_8);
                         }
-                    }
-                } else {
-                    try {
-                        JarEntry etn = new JarEntry(entry.getName());
-                        if (history.add(etn)) continue;
-                        history.add(etn);
-                        out.putNextEntry(etn);
-                        try (InputStream in = jfile.getInputStream(entry)) {
-                            if (in != null) {
-                                int count;
-                                while ((count = in.read(data, 0, 1024)) != -1) {
-                                    out.write(data, 0, count);
-                                }
-                            }
-                        } finally {
-                            out.closeEntry();
-                        }
-                    } catch (ZipException ze) {
-                        // some jars contain duplicate pom.xml entries: ignore it
-                        if (!ze.getMessage().contains("duplicate")) {
-                            throw ze;
+                        finally
+                        {
+                            zip.closeEntry();
                         }
                     }
                 }
+                else
+                {
+                    try
+                    {
+                        JarEntry jarEntry = new JarEntry(entry.getName());
+
+                        if (history.add(jarEntry))
+                            continue;
+
+                        history.add(jarEntry);
+                        zip.putNextEntry(jarEntry);
+
+                        try (InputStream input = jarFile.getInputStream(entry))
+                        {
+                            if (input != null)
+                            {
+                                int count;
+
+                                while ((count = input.read(data, 0, 1024)) != -1)
+                                {
+                                    zip.write(data, 0, count);
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            zip.closeEntry();
+                        }
+                    }
+                    catch (ZipException e)
+                    {
+                        // some jars contain duplicate pom.xml entries: ignore it
+                        if (!e.getMessage().contains("duplicate"))
+                            throw e;
+                    }
+                }
             }
-        } catch (StackOverflowError | Exception e) {
+        }
+        catch (StackOverflowError | Exception e)
+        {
             BytecodeViewer.handleException(e);
         }
     }
 
-    public Options generateOptions() {
+    public Options generateOptions()
+    {
         Map<String, String> options = new HashMap<>();
         options.put("decodeenumswitch", String.valueOf(BytecodeViewer.viewer.decodeEnumSwitch.isSelected()));
         options.put("sugarenums", String.valueOf(BytecodeViewer.viewer.sugarEnums.isSelected()));
@@ -164,8 +192,7 @@ public class CFRDecompiler extends InternalDecompiler {
         options.put("collectioniter", String.valueOf(BytecodeViewer.viewer.collectioniter.isSelected()));
         options.put("innerclasses", String.valueOf(BytecodeViewer.viewer.innerClasses.isSelected()));
         options.put("removeboilerplate", String.valueOf(BytecodeViewer.viewer.removeBoilerPlate.isSelected()));
-        options.put("removeinnerclasssynthetics",
-                String.valueOf(BytecodeViewer.viewer.removeInnerClassSynthetics.isSelected()));
+        options.put("removeinnerclasssynthetics", String.valueOf(BytecodeViewer.viewer.removeInnerClassSynthetics.isSelected()));
         options.put("decodelambdas", String.valueOf(BytecodeViewer.viewer.decodeLambdas.isSelected()));
         options.put("hidebridgemethods", String.valueOf(BytecodeViewer.viewer.hideBridgeMethods.isSelected()));
         options.put("liftconstructorinit", String.valueOf(BytecodeViewer.viewer.liftConstructorInit.isSelected()));
@@ -198,55 +225,69 @@ public class CFRDecompiler extends InternalDecompiler {
         options.put("recovertypehints", String.valueOf(BytecodeViewer.viewer.recoveryTypehInts.isSelected()));
         options.put("forcereturningifs", String.valueOf(BytecodeViewer.viewer.forceTurningIFs.isSelected()));
         options.put("forloopaggcapture", String.valueOf(BytecodeViewer.viewer.forLoopAGGCapture.isSelected()));
+
         return new OptionsImpl(options);
     }
 
-    private static class BCVDataSource extends ClassFileSourceImpl {
+    private static class BCVDataSource extends ClassFileSourceImpl
+    {
 
         private final ResourceContainer container;
         private final String classFilePath;
         private final byte[] content;
 
-        private BCVDataSource(Options options, ClassNode cn, String classFilePath, byte[] content) {
+        private BCVDataSource(Options options, ClassNode cn, String classFilePath, byte[] content)
+        {
             super(options);
-            this.container = BytecodeViewer.getResourceContainers().stream()
-                    .filter(rc -> rc.resourceClasses.containsValue(cn))
-                    .findFirst().orElse(null);
+            this.container = BytecodeViewer.getResourceContainers()
+                .stream().filter(rc -> rc.resourceClasses.containsValue(cn)).findFirst().orElse(null);
             this.classFilePath = classFilePath;
             this.content = content;
         }
 
         @Override
-        public Pair<byte[], String> getClassFileContent(String classFilePath) throws IOException {
-            if (classFilePath.equals(this.classFilePath) && content != null) return Pair.make(content, classFilePath);
-            if (container == null) return super.getClassFileContent(classFilePath);
+        public Pair<byte[], String> getClassFileContent(String classFilePath) throws IOException
+        {
+            if (classFilePath.equals(this.classFilePath) && content != null)
+                return Pair.make(content, classFilePath);
+
+            if (container == null)
+                return super.getClassFileContent(classFilePath);
+
             byte[] data = container.resourceClassBytes.get(classFilePath);
-            if (data == null) return super.getClassFileContent(classFilePath);
+
+            if (data == null)
+                return super.getClassFileContent(classFilePath);
+
             return Pair.make(data, classFilePath);
         }
-
     }
 
-    private static class BCVOutputSinkFactory implements OutputSinkFactory {
+    private static class BCVOutputSinkFactory implements OutputSinkFactory
+    {
 
         private final Consumer<SinkReturns.Decompiled> dumpDecompiled;
 
-        private BCVOutputSinkFactory(Consumer<SinkReturns.Decompiled> dumpDecompiled) {
+        private BCVOutputSinkFactory(Consumer<SinkReturns.Decompiled> dumpDecompiled)
+        {
             this.dumpDecompiled = dumpDecompiled;
         }
 
         @Override
-        public List<SinkClass> getSupportedSinks(SinkType sinkType, Collection<SinkClass> available) {
+        public List<SinkClass> getSupportedSinks(SinkType sinkType, Collection<SinkClass> available)
+        {
             return Collections.singletonList(SinkClass.DECOMPILED);
         }
 
         @Override
-        public <T> Sink<T> getSink(SinkType sinkType, SinkClass sinkClass) {
-            if (sinkType == SinkType.JAVA && sinkClass == SinkClass.DECOMPILED) {
+        public <T> Sink<T> getSink(SinkType sinkType, SinkClass sinkClass)
+        {
+            if (sinkType == SinkType.JAVA && sinkClass == SinkClass.DECOMPILED)
+            {
                 return x -> dumpDecompiled.accept((SinkReturns.Decompiled) x);
             }
-            return ignore -> {
-            };
+
+            return ignore -> {};
         }
 
     }

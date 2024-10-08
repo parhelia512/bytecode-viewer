@@ -18,60 +18,77 @@
 
 package the.bytecode.club.bytecodeviewer.gui.components;
 
+import the.bytecode.club.bytecodeviewer.util.MiscUtils;
+
+import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
 import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileFilter;
-import the.bytecode.club.bytecodeviewer.util.MiscUtils;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 /**
  * @author Konloch
  * @since 6/25/2021
  */
-public class FileChooser extends JFileChooser
+public class FileChooser
 {
-	public static final String EVERYTHING = "everything";
-	
-	public FileChooser(File file, String title, String description, String... extensions)
-	{
-		this(false, file, title, description, extensions);
-	}
-	
-	public FileChooser(boolean skipFileFilter, File file, String title, String description, String... extensions)
-	{
-		Set<String> extensionSet = new HashSet<>(Arrays.asList(extensions));
-		
-		setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-		try {
-			setSelectedFile(file);
-		} catch (Exception ignored) { }
-		
-		setDialogTitle(title);
-		setFileHidingEnabled(false);
-		setAcceptAllFileFilterUsed(false);
-		if(!skipFileFilter)
-		{
-            addChoosableFileFilter(new FileFilter()
-			{
-				@Override
-				public boolean accept(File f)
-				{
-					if (f.isDirectory())
-						return true;
-					
-					if(extensions[0].equals(EVERYTHING))
-						return true;
-					
-					return extensionSet.contains(MiscUtils.extension(f.getAbsolutePath()));
-				}
-				
-				@Override
-				public String getDescription() {
-					return description;
-				}
-			});
-		}
-	}
+    public static final FutureTask<JFileChooser> SINGLETON = new FutureTask<>(JFileChooser::new);
+    public static final String EVERYTHING = "everything";
+
+    public static JFileChooser create(File file, String title, String description, String... extensions) throws ExecutionException, InterruptedException
+    {
+        return create(false, file, title, description, extensions);
+    }
+
+    public static JFileChooser create(boolean skipFileFilter, File file, String title, String description, String... extensions) throws ExecutionException, InterruptedException
+    {
+        JFileChooser chooser = SINGLETON.get();
+
+        Set<String> extensionSet = new HashSet<>(Arrays.asList(extensions));
+
+        chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+
+        try
+        {
+            chooser.setSelectedFile(file);
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        chooser.setDialogTitle(title);
+        chooser.setFileHidingEnabled(false);
+        chooser.setAcceptAllFileFilterUsed(false);
+
+        chooser.resetChoosableFileFilters();
+
+        if (!skipFileFilter)
+        {
+            chooser.addChoosableFileFilter(new FileFilter()
+            {
+                @Override
+                public boolean accept(File f)
+                {
+                    if (f.isDirectory())
+                        return true;
+
+                    if (extensions[0].equals(EVERYTHING))
+                        return true;
+
+                    return extensionSet.contains(MiscUtils.extension(f.getAbsolutePath()));
+                }
+
+                @Override
+                public String getDescription()
+                {
+                    return description;
+                }
+            });
+        }
+
+        return chooser;
+    }
 }
